@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:tx="http://www.springframework.org/schema/tx" xmlns:aop="http://www.springframework.org/schema/aop"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+	http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+	http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd
+	http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd">
+	<context:property-placeholder location="classpath:db.properties" />
+	<bean class="com.mchange.v2.c3p0.ComboPooledDataSource" id="dataSoucre">
+		<property name="driverClass" value="${db.driver}" />
+		<property name="jdbcUrl" value="${db.url}" />
+		<property name="user" value="${db.username}" />
+		<property name="password" value="${db.password}" />
+	</bean>
+
+	<bean class="org.springframework.orm.hibernate5.LocalSessionFactoryBean"
+		id="sessionFactory">
+		<property name="dataSource" ref="dataSoucre" />
+		<property name="mappingDirectoryLocations" value="classpath:com/zfw/entity" />
+		<property name="hibernateProperties">
+			<props>
+				<prop key="hibernate.dialect">com.zfw.dialect._MySQL5Dialect</prop>
+				<prop key="hibernate.show_sql">true</prop>
+				<prop key="hibernate.format_sql">true</prop>
+				<prop key="hibernate.hbm2ddl.auto">update</prop>
+				<prop key="current_session_context_class">org.springframework.orm.hibernate5.SpringSessionContext
+				</prop>
+			</props>
+		</property>
+	</bean>
+	<bean class="com.zfw.dao.UploadDAOImpl" id="uploadDAOImpl">
+		<property name="sessionFactory" ref="sessionFactory" />
+	</bean>
+	<bean class="com.zfw.service.UploadFileServiceImpl" id="uploadFileServiceImpl">
+		<property name="uploadDAO" ref="uploadDAOImpl" />
+	</bean>
+	<bean class="com.zfw.actions.UploadAction" id="uploadAction">
+		<property name="uploadFileService" ref="uploadFileServiceImpl" />
+	</bean>
+
+	<bean class="com.zfw.actions.LookAction" id="lookAction">
+		<property name="uploadFileService" ref="uploadFileServiceImpl" />
+	</bean>
+
+	<bean class="com.zfw.actions.DeleteAction" id="deleteAction">
+		<property name="uploadFileService" ref="uploadFileServiceImpl" />
+	</bean>
+
+	<bean class="org.springframework.orm.hibernate5.HibernateTransactionManager"
+		id="transactionManager">
+		<property name="sessionFactory" ref="sessionFactory" />
+	</bean>
+
+	<tx:advice transaction-manager="transactionManager" id="txAdvice">
+		<tx:attributes>
+			<tx:method name="find*" isolation="DEFAULT" propagation="REQUIRED"
+				read-only="true" />
+			<tx:method name="add*" isolation="DEFAULT" propagation="REQUIRED" />
+			<tx:method name="remove*" isolation="DEFAULT" propagation="REQUIRED" />
+		</tx:attributes>
+	</tx:advice>
+
+	<aop:config>
+		<aop:pointcut expression="execution(* *..service.*.*(..))"
+			id="servicePointcut" />
+		<aop:advisor advice-ref="txAdvice" pointcut-ref="servicePointcut" />
+	</aop:config>
+
+</beans>
